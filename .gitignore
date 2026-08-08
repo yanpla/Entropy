@@ -1,0 +1,10 @@
+.git/
+.idea/
+.vs/
+obj/
+bin/
+.qodo/
+amogus/
+
+*.user
+*.lock.json
