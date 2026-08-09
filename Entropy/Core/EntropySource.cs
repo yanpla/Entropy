@@ -10,6 +10,9 @@ public enum EntropySource : byte
     Meeting,
     Vent,
     TaskComplete,
+
+    /// <summary>Someone reported a body that was never there.</summary>
+    FalseReport,
 }
 
 public static class EntropySourceExtensions
@@ -25,6 +28,9 @@ public static class EntropySourceExtensions
         EntropySource.Meeting => 10f,
         EntropySource.Vent => 3f,
         EntropySource.TaskComplete => -2f,
+
+        // Doubting your own eyes feeds the thing that made you doubt them.
+        EntropySource.FalseReport => 12f,
         _ => 0f,
     };
 }

@@ -21,6 +21,8 @@ public static class AnomalyRegistry
         new AnonymousPlayers(),
         new FakeSabotage(),
         new Displacement(),
+        new FakeStranger(),
+        new FakeBody(),
     ];
 
     public static byte IdOf(Anomaly anomaly) => (byte)System.Array.IndexOf(All, anomaly);
