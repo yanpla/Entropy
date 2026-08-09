@@ -47,6 +47,7 @@ public class FakeStranger : Anomaly
             false,
             false);
         stranger.SetName(impersonated.Data.PlayerName);
+        MatchSizeTo(stranger, impersonated);
 
         var angle = (float)(rng.NextDouble() * System.Math.PI * 2d);
         var spot = target.transform.position + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * Distance;
@@ -63,5 +64,24 @@ public class FakeStranger : Anomaly
         }
 
         if (stranger) Object.Destroy(stranger.gameObject);
+    }
+
+    /// <summary>
+    /// Shrinks the dummy until it is the size of the player it is pretending to be.
+    /// </summary>
+    /// <remarks>
+    /// The prefab comes from the intro cutscene, which is drawn at cutscene size and so
+    /// arrives on the map several times too big. Measuring both bodies and dividing beats
+    /// a hardcoded factor: it stays correct whoever is impersonated and whatever the
+    /// cutscene is rescaled to.
+    /// </remarks>
+    private static void MatchSizeTo(PoolablePlayer stranger, PlayerControl impersonated)
+    {
+        var theirs = impersonated.cosmetics.currentBodySprite.BodySprite;
+        var ours = stranger.Cosmetics.currentBodySprite.BodySprite;
+
+        if (!theirs || !ours || ours.bounds.size.y <= 0f) return;
+
+        stranger.transform.localScale *= theirs.bounds.size.y / ours.bounds.size.y;
     }
 }
