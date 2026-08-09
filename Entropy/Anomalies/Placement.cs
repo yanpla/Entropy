@@ -1,29 +1,44 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Reactor.Utilities;
 using UnityEngine;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
 /// <summary>
-/// Finding somewhere on the map that a thing can plausibly be.
+/// Somewhere on the map a thing can be put.
 /// </summary>
 /// <remarks>
-/// Anomalies put bodies, strangers and players onto the floor, and all of them need the
-/// same guarantee: inside the map, and not inside the scenery. Rooms are what make that
-/// checkable - a room collider is an area the map promises is part of itself, whereas a
-/// bounding box, a vent or an offset from a player is only a point that might be.
+/// Whether a point is on the map is a question about reachability, not geometry, and
+/// that is why testing colliders never worked. Outside the ship there is nothing to
+/// collide with, so empty space out there looks exactly as clear as an empty corridor;
+/// room areas reach through walls and hallways can be catch-alls, so containment says
+/// yes to places nobody can stand. No local test can tell the two apart.
+/// <para>
+/// AmongUs-Pathfinder solves it by flood filling from a point known to be inside and
+/// keeping only what the fill reaches. That is what this does: walk outwards from a
+/// living player, one step at a time, stopping at anything solid. The walls enclose the
+/// ship, so the fill cannot escape it, and everything it reaches is somewhere a player
+/// could have walked to.
+/// </para>
 /// </remarks>
 public static class Placement
 {
-    /// <summary>How much empty space a thing needs so it isn't half inside a wall.</summary>
-    private const float Clearance = 0.4f;
+    /// <summary>Spacing of the lattice. Fine enough to fit through doorways.</summary>
+    private const float Step = 0.5f;
 
-    private const int Attempts = 25;
+    /// <summary>How much empty space a thing needs so it isn't half inside a wall.</summary>
+    private const float Clearance = 0.3f;
+
+    /// <summary>Stops a runaway fill if the map ever turns out not to be enclosed.</summary>
+    private const int MaxSpots = 20000;
+
+    private static ShipStatus? _mapped;
+    private static List<Vector2> _spots = [];
 
     /// <summary>
-    /// A random spot with solid floor under it, or null if nothing suitable turned up.
+    /// A random spot a player could have walked to, or null if nothing is in range.
     /// </summary>
     /// <param name="rng">The anomaly's seeded source.</param>
     /// <param name="near">
@@ -33,45 +48,93 @@ public static class Placement
     /// <param name="maxDistance">Furthest it may be from <paramref name="near"/>.</param>
     public static Vector2? Find(Random rng, Vector2? near = null, float minDistance = 0f, float maxDistance = 0f)
     {
-        if (!ShipStatus.Instance) return null;
+        var spots = Reachable();
 
-        var rooms = ShipStatus.Instance.AllRooms.ToArray().Where(room => room && room.roomArea).ToList();
-        if (rooms.Count == 0) return null;
-
-        // Hallways count as map, but they are long thin diagonal things whose bounding
-        // box is mostly outside them, so they make poor places to aim for.
-        var destinations = rooms.Where(room => room.RoomId != SystemTypes.Hallway).ToList();
-        if (destinations.Count == 0) destinations = rooms;
-
-        for (var attempt = 0; attempt < Attempts; attempt++)
+        if (near is { } origin)
         {
-            var spot = near is { } origin
-                ? origin + Offset(rng, minDistance, maxDistance)
-                : Somewhere(rng, destinations[rng.Next(destinations.Count)]);
-
-            if (!rooms.Any(room => room.roomArea.OverlapPoint(spot))) continue;
-            if (Physics2D.OverlapCircle(spot, Clearance, Constants.ShipAndObjectsMask)) continue;
-
-            return spot;
+            spots = spots
+                .Where(spot => Vector2.Distance(spot, origin) is var away
+                    && away >= minDistance
+                    && away <= maxDistance)
+                .ToList();
         }
 
-        return null;
+        return spots.Count == 0 ? null : spots[rng.Next(spots.Count)];
     }
 
-    private static Vector2 Offset(Random rng, float minDistance, float maxDistance)
+    private static List<Vector2> Reachable()
     {
-        var angle = (float)(rng.NextDouble() * Math.PI * 2d);
-        var reach = (float)(rng.NextDouble() * (maxDistance - minDistance) + minDistance);
+        if (_mapped == ShipStatus.Instance && _spots.Count > 0) return _spots;
+        if (!ShipStatus.Instance || !PlayerControl.LocalPlayer) return [];
 
-        return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * reach;
+        _mapped = ShipStatus.Instance;
+        _spots = Fill(PlayerControl.LocalPlayer.GetTruePosition());
+
+        Logger<EntropyPlugin>.Info($"Placement mapped {_spots.Count} reachable spots");
+
+        return _spots;
     }
 
-    private static Vector2 Somewhere(Random rng, PlainShipRoom room)
+    /// <summary>
+    /// Every spot reachable from <paramref name="start"/> without passing through
+    /// anything solid.
+    /// </summary>
+    private static List<Vector2> Fill(Vector2 start)
     {
-        var bounds = room.roomArea.bounds;
+        var spots = new List<Vector2>();
+        var seen = new HashSet<(int X, int Y)>();
+        var queue = new Queue<(int X, int Y)>();
 
-        return new Vector2(
-            (float)(rng.NextDouble() * bounds.size.x + bounds.min.x),
-            (float)(rng.NextDouble() * bounds.size.y + bounds.min.y));
+        seen.Add((0, 0));
+        queue.Enqueue((0, 0));
+
+        while (queue.Count > 0 && spots.Count < MaxSpots)
+        {
+            var cell = queue.Dequeue();
+            var spot = start + new Vector2(cell.X * Step, cell.Y * Step);
+
+            if (Blocked(spot)) continue;
+
+            spots.Add(spot);
+
+            // Four directions only. Diagonals would let the fill slip through the corner
+            // where two walls meet and escape the ship.
+            foreach (var next in new[]
+                     {
+                         (cell.X + 1, cell.Y), (cell.X - 1, cell.Y),
+                         (cell.X, cell.Y + 1), (cell.X, cell.Y - 1),
+                     })
+            {
+                if (seen.Add(next)) queue.Enqueue(next);
+            }
+        }
+
+        return spots;
+    }
+
+    /// <summary>
+    /// Whether something solid is sitting on this spot.
+    /// </summary>
+    /// <remarks>
+    /// Triggers are ignored rather than left to the layer mask, because room areas are
+    /// themselves triggers on the ship layers and would report the whole map as blocked.
+    /// Doors are ignored too: one that happens to be shut while the map is being filled
+    /// would wall off every room behind it for the rest of the game.
+    /// </remarks>
+    private static bool Blocked(Vector2 spot)
+    {
+        var hits = Physics2D.OverlapCircleAll(spot, Clearance, Constants.ShipAndAllObjectsMask);
+
+        for (var i = 0; i < hits.Length; i++)
+        {
+            var hit = hits[i];
+
+            if (!hit || hit.isTrigger) continue;
+            if (hit.GetComponentInParent<OpenableDoor>()) continue;
+
+            return true;
+        }
+
+        return false;
     }
 }
