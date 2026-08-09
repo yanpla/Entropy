@@ -26,9 +26,9 @@ public class EntropyModifier : GameModifier
     public const float Max = 100f;
 
     /// <summary>
-    /// How far below empty a player can bank. Keeping ahead of the chaos buys quiet,
-    /// but only so much - without a floor, an early task rush would switch the mod off
-    /// for that player for the rest of the game.
+    /// How far ahead of the drift a player can get. Working hard buys quiet, but only
+    /// so much - without a floor, a task rush or a killing spree would switch the mod
+    /// off for that player for the rest of the game.
     /// </summary>
     public const float Min = -25f;
 
@@ -71,8 +71,10 @@ public class EntropyModifier : GameModifier
     {
         if (!AmongUsClient.Instance.AmHost) return;
 
-        Value = Mathf.Clamp(Value + source.Weight(), Min, Max);
+        Shift(source.Weight());
     }
+
+    private void Shift(float delta) => Value = Mathf.Clamp(Value + delta, Min, Max);
 
     /// <summary>Nobody performs a meeting, so everyone carrying this pays for it.</summary>
     public override void OnMeetingStart() => Add(EntropySource.Meeting);
@@ -83,9 +85,12 @@ public class EntropyModifier : GameModifier
         if (!ShipStatus.Instance || MeetingHud.Instance || !AmongUsClient.Instance.IsGameStarted) return;
         if (Player.Data is not { IsDead: false, Disconnected: false }) return;
 
-        // Negative is banked quiet: this player has out-tasked their own chaos and
-        // nothing happens to them until something puts them back above empty. The timer
-        // holds where it is, so the reprieve ends where it interrupted.
+        // The meter fills by itself. Standing still is the losing move for everyone.
+        Shift(Max / OptionGroupSingleton<EntropyModifierSettings>.Instance.SecondsToFill * Time.fixedDeltaTime);
+
+        // Negative is banked quiet: this player has got far enough ahead of the drift
+        // that nothing happens to them until it catches back up. The timer holds where
+        // it is, so the reprieve ends where it interrupted.
         if (Value < 0f) return;
 
         _timer -= Time.fixedDeltaTime;

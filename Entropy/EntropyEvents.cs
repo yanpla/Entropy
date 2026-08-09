@@ -1,4 +1,5 @@
 using MiraAPI.Events;
+using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
 using MiraAPI.Events.Vanilla.Player;
 
@@ -26,5 +27,12 @@ public static class EntropyEvents
     public static void OnTaskComplete(CompleteTaskEvent @event)
     {
         if (@event.Player.AmOwner) EntropyManager.Report(EntropySource.TaskComplete);
+    }
+
+    /// <summary>An impostor has no tasks to steady themselves with, only this.</summary>
+    [RegisterEvent]
+    public static void OnMurder(AfterMurderEvent @event)
+    {
+        if (@event.Source.AmOwner) EntropyManager.Report(EntropySource.Kill);
     }
 }
