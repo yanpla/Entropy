@@ -36,10 +36,10 @@ public class FakeStranger : Anomaly
     private const float WanderMax = 12f;
 
     /// <summary>Close enough to a waypoint to call it reached.</summary>
-    private const float Arrival = 0.05f;
+    private const float Arrival = 0.1f;
 
-    /// <summary>Fallback pace if the local player has no physics to copy.</summary>
-    private const float Pace = 2.5f;
+    /// <summary>A client id nobody holds, so the fake is owned by no one.</summary>
+    private const int Nobody = -2;
 
     public override string Name => "Someone is walking there";
 
@@ -68,7 +68,6 @@ public class FakeStranger : Anomaly
         stranger.cosmetics.SetFlipX(spot.x < feet.x);
 
         var route = new Queue<Vector2>();
-        var walking = false;
 
         for (var elapsed = 0f; elapsed < Lifetime; elapsed += Time.deltaTime)
         {
@@ -79,17 +78,10 @@ public class FakeStranger : Anomaly
                 foreach (var waypoint in Wander(stranger, rng)) route.Enqueue(waypoint);
             }
 
-            // Only on the change, or the animation restarts from its first frame every
-            // time round and the legs never actually move.
-            if (walking != route.Count > 0)
-            {
-                walking = route.Count > 0;
+            if (route.Count == 0) stranger.MyPhysics.body.velocity = Vector2.zero;
+            else if (Step(stranger, route.Peek())) route.Dequeue();
 
-                if (walking) stranger.MyPhysics.Animations.PlayRunAnimation();
-                else stranger.MyPhysics.Animations.PlayIdleAnimation();
-            }
-
-            if (route.Count > 0 && Step(stranger, route.Peek())) route.Dequeue();
+            Depth(stranger);
 
             yield return null;
         }
@@ -113,22 +105,29 @@ public class FakeStranger : Anomaly
             : [];
     }
 
-    /// <summary>Moves one frame towards a waypoint, reporting whether it arrived.</summary>
+    /// <summary>
+    /// Steers towards a waypoint, reporting whether it arrived.
+    /// </summary>
+    /// <remarks>
+    /// Drives the rigidbody rather than the transform, because that is the one thing
+    /// vanilla watches. Given a velocity, its own physics play the walk cycle, animate the
+    /// skin and flip the sprite - and the hat and visor ride along, which they will not do
+    /// for anything moved behind the game's back.
+    /// </remarks>
     private static bool Step(PlayerControl stranger, Vector2 waypoint)
     {
-        var here = Where(stranger);
+        var toGo = waypoint - Where(stranger);
 
-        // Copy the real walking speed rather than guess at one, so it moves like a player.
-        var pace = PlayerControl.LocalPlayer && PlayerControl.LocalPlayer.MyPhysics
-            ? PlayerControl.LocalPlayer.MyPhysics.TrueSpeed
-            : Pace;
+        if (toGo.magnitude < Arrival)
+        {
+            stranger.MyPhysics.body.velocity = Vector2.zero;
 
-        var moved = Vector2.MoveTowards(here, waypoint, pace * Time.deltaTime);
-        Stand(stranger, moved);
+            return true;
+        }
 
-        if (!Mathf.Approximately(moved.x, here.x)) stranger.cosmetics.SetFlipX(moved.x < here.x);
+        stranger.MyPhysics.body.velocity = toGo.normalized * stranger.MyPhysics.TrueSpeed;
 
-        return Vector2.Distance(moved, waypoint) < Arrival;
+        return false;
     }
 
     private static Vector2 Where(PlayerControl stranger) => stranger.transform.position;
@@ -137,22 +136,35 @@ public class FakeStranger : Anomaly
     private static void Stand(PlayerControl stranger, Vector2 spot) =>
         stranger.transform.position = new Vector3(spot.x, spot.y, spot.y / 1000f);
 
+    /// <summary>Keeps it sorted against everything else as it walks up and down.</summary>
+    private static void Depth(PlayerControl stranger)
+    {
+        var here = stranger.transform.position;
+
+        stranger.transform.position = new Vector3(here.x, here.y, here.y / 1000f);
+    }
+
     /// <summary>
     /// Takes a freshly built player back out of the game it just joined.
     /// </summary>
     /// <remarks>
-    /// Awake has already registered it, so the flag goes on and the registration comes
-    /// off by hand. Everything that would make it behave like a player is switched off:
-    /// it has no data to run on, and it is meant to be scenery. Its physics component
-    /// stays for the animations hanging off it, which work fine while disabled.
+    /// Awake has already registered it, so the flag goes on and the registration comes off
+    /// by hand. <see cref="PlayerControl"/> itself is switched off because it has no data
+    /// to run on, and so is the networking, because nobody else is to know.
+    /// <para>
+    /// Its physics stay on. That component is what watches the rigidbody and drives the
+    /// walk cycle, the skin and the hat and visor off it; disabling it was why the clothes
+    /// hung in mid air. Instead the owner is set to nobody, so its own update never mistakes
+    /// this for the local player and starts steering it with our joystick.
+    /// </para>
     /// </remarks>
     private static void Disown(PlayerControl stranger)
     {
         stranger.notRealPlayer = true;
+        stranger.OwnerId = Nobody;
         PlayerControl.AllPlayerControls.Remove(stranger);
 
         stranger.enabled = false;
-        if (stranger.MyPhysics) stranger.MyPhysics.enabled = false;
         if (stranger.NetTransform) stranger.NetTransform.enabled = false;
         if (stranger.Collider) stranger.Collider.enabled = false;
     }
@@ -169,10 +181,22 @@ public class FakeStranger : Anomaly
         var outfit = impersonated.Data.DefaultOutfit;
         var cosmetics = stranger.cosmetics;
 
+        // Builds the body and hands the animation system the offsets that hats and visors
+        // ride on. Nothing else does this - a real player gets it when the game sets their
+        // body type - so without it the clothes hang wherever the prefab left them and do
+        // not follow the walk.
+        stranger.MyPhysics.SetBodyType(PlayerBodyTypes.Normal);
+
         cosmetics.SetColor(outfit.ColorId);
         cosmetics.SetHat(outfit.HatId, outfit.ColorId);
         cosmetics.SetVisor(outfit.VisorId, outfit.ColorId);
         cosmetics.SetSkin(outfit.SkinId, outfit.ColorId);
+
+        // Vanilla lifts the name clear of the head whenever it sets a hat, and higher when
+        // there is one to clear. Setting the hat straight onto the cosmetics skips that,
+        // which leaves the name sitting in the middle of the body.
+        cosmetics.SetNamePosition(new Vector3(0f, string.IsNullOrEmpty(outfit.HatId) ? 0.8f : 1f, -0.5f));
+
         cosmetics.SetName(outfit.PlayerName);
         cosmetics.ToggleNameVisible(true);
     }
