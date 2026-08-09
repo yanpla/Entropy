@@ -1,6 +1,8 @@
 using System.Linq;
 using Entropy.Anomalies;
+using Entropy.Modifiers;
 using MiraAPI.Events;
+using MiraAPI.Modifiers;
 using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
 using MiraAPI.Events.Vanilla.Meeting;
@@ -13,8 +15,8 @@ namespace Entropy;
 /// </summary>
 /// <remarks>
 /// Each handler reports from the client that owns the action, so the host attributes it
-/// correctly and never double counts. Meetings are not here: every
-/// <see cref="EntropyModifier"/> picks those up itself.
+/// correctly and never double counts. A meeting adds nothing: it wipes every
+/// <see cref="EntropyModifier"/> back to zero instead, so each round starts from calm.
 /// </remarks>
 public static class EntropyEvents
 {
@@ -37,6 +39,15 @@ public static class EntropyEvents
     public static void OnMurder(AfterMurderEvent @event)
     {
         if (@event.Source.AmOwner) EntropyManager.Report(EntropySource.Kill);
+    }
+
+    /// <summary>Everyone walks out of a meeting calm, whatever they walked in as.</summary>
+    [RegisterEvent]
+    public static void OnMeetingEnd(EndMeetingEvent @event)
+    {
+        if (!AmongUsClient.Instance.AmHost) return;
+
+        foreach (var modifier in ModifierUtils.GetActiveModifiers<EntropyModifier>()) modifier.Reset();
     }
 
     /// <summary>

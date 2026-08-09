@@ -9,7 +9,6 @@ namespace Entropy;
 public enum EntropySource : byte
 {
     Sabotage,
-    Meeting,
 
     /// <summary>A crewmate's way of holding entropy off.</summary>
     TaskComplete,
@@ -39,7 +38,6 @@ public static class EntropySourceExtensions
         return source switch
         {
             EntropySource.Sabotage => 8f,
-            EntropySource.Meeting => 10f,
 
             // The host sets these as the ground you win back, so they read as positive
             // in the lobby and are spent as negative here.
@@ -53,9 +51,8 @@ public static class EntropySourceExtensions
     }
 
     /// <summary>
-    /// Whether this lands on everybody or only on whoever caused it. The ship-wide
-    /// events are felt ship-wide; what you do alone is yours to carry.
+    /// Whether this lands on everybody or only on whoever caused it. A sabotage is felt
+    /// ship-wide; what you do alone is yours to carry.
     /// </summary>
-    public static bool AffectsEveryone(this EntropySource source) =>
-        source is EntropySource.Sabotage or EntropySource.Meeting;
+    public static bool AffectsEveryone(this EntropySource source) => source is EntropySource.Sabotage;
 }

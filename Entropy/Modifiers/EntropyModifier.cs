@@ -33,8 +33,8 @@ public class EntropyModifier : GameModifier
     public const float Min = -25f;
 
     /// <summary>Seconds between this player's anomalies at an empty and at a full meter.</summary>
-    private const float CalmGap = 25f;
-    private const float ChaoticGap = 4f;
+    private const float CalmGap = 30f;
+    private const float ChaoticGap = 10f;
 
     /// <summary>How far either side of the gap the next one may land, so it can't be counted.</summary>
     private const float Jitter = 0.3f;
@@ -76,8 +76,21 @@ public class EntropyModifier : GameModifier
 
     private void Shift(float delta) => Value = Mathf.Clamp(Value + delta, Min, Max);
 
-    /// <summary>Nobody performs a meeting, so everyone carrying this pays for it.</summary>
-    public override void OnMeetingStart() => Add(EntropySource.Meeting);
+    /// <summary>
+    /// Wipes the slate. Host only.
+    /// </summary>
+    /// <remarks>
+    /// A meeting is the one moment everyone compares what they saw, so it is also the
+    /// natural place for the round to start over: whatever anybody was seeing beforehand
+    /// stops, and the next stretch builds from nothing.
+    /// </remarks>
+    public void Reset()
+    {
+        if (!AmongUsClient.Instance.AmHost) return;
+
+        Value = 0f;
+        _timer = Gap();
+    }
 
     public override void FixedUpdate()
     {
