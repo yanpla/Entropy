@@ -1,38 +1,44 @@
 using System.Collections;
 using System.Linq;
 using Entropy.Core;
+using UnityEngine;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
 /// <summary>
-/// Doors slam shut in rooms nobody sabotaged.
+/// The doors nearest one player shut, on that player's screen only.
 /// </summary>
+/// <remarks>
+/// Closed locally, so the collider really does block the target while everyone else
+/// walks through an open doorway. They are reopened by us rather than by the door
+/// system, which knows nothing about any of this.
+/// </remarks>
 public class DoorMalfunction : Anomaly
 {
+    private const float Duration = 6f;
+
     public override string Name => "The doors have a mind of their own";
 
     public override EntropyTier MinTier => EntropyTier.Stable;
 
-    public override bool CanRun() => ShipStatus.Instance.AllDoors.Count > 0;
+    public override bool CanRun(PlayerControl target) => ShipStatus.Instance.AllDoors.Count > 0;
 
-    public override IEnumerator Run(Random rng)
+    public override IEnumerator Run(PlayerControl target, Random rng)
     {
-        var rooms = ShipStatus.Instance.AllDoors.ToArray()
-            .Select(door => door.Room)
-            .Distinct()
-            .OrderBy(room => (int)room)
+        if (!target.AmOwner) yield break;
+
+        var here = target.GetTruePosition();
+        var doors = ShipStatus.Instance.AllDoors.ToArray()
+            .Where(door => door && door.IsOpen)
+            .OrderBy(door => Vector2.Distance(here, door.transform.position))
+            .Take(rng.Next(2, 5))
             .ToList();
 
-        var count = System.Math.Min(rng.Next(1, 4), rooms.Count);
+        foreach (var door in doors) door.SetDoorway(false);
 
-        for (var i = 0; i < count; i++)
-        {
-            var room = rooms.Draw(rng);
+        yield return new WaitForSeconds(Duration);
 
-            if (AmongUsClient.Instance.AmHost) ShipStatus.Instance.RpcCloseDoorsOfType(room);
-        }
-
-        yield break;
+        foreach (var door in doors.Where(door => door)) door.SetDoorway(true);
     }
 }

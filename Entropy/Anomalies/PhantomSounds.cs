@@ -6,7 +6,7 @@ using Random = System.Random;
 namespace Entropy.Anomalies;
 
 /// <summary>
-/// Vents that nobody used. The sound is real, the vent is not.
+/// Vents nobody used, heard by one person.
 /// </summary>
 public class PhantomSounds : Anomaly
 {
@@ -14,10 +14,12 @@ public class PhantomSounds : Anomaly
 
     public override EntropyTier MinTier => EntropyTier.Unstable;
 
-    public override bool CanRun() => ShipStatus.Instance.VentEnterSound;
+    public override bool CanRun(PlayerControl target) => ShipStatus.Instance.VentEnterSound;
 
-    public override IEnumerator Run(Random rng)
+    public override IEnumerator Run(PlayerControl target, Random rng)
     {
+        if (!target.AmOwner) yield break;
+
         var bursts = rng.Next(2, 5);
 
         for (var i = 0; i < bursts; i++)
@@ -25,7 +27,7 @@ public class PhantomSounds : Anomaly
             var clip = rng.Next(2) == 0 ? ShipStatus.Instance.VentEnterSound : ShipStatus.Instance.VentExitSound;
             SoundManager.Instance.PlaySound(clip, false, 0.7f);
 
-            yield return new WaitForSeconds((float)(rng.NextDouble() * 2.5f + 0.5f));
+            yield return new WaitForSeconds((float)(rng.NextDouble() * 2.5d + 0.5d));
         }
     }
 }

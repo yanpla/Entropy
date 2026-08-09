@@ -17,22 +17,16 @@ public static class AnomalyRegistry
     [
         new LightsFlicker(),
         new DoorMalfunction(),
-        new CooldownShift(),
-        new PlayerSwap(),
         new PhantomSounds(),
         new AnonymousPlayers(),
-        new RandomSabotage(),
-        new InvertedControls(),
-        new MassTeleport(),
-        new RealityCollapse(),
+        new FakeSabotage(),
+        new Displacement(),
     ];
-
-    public static readonly RealityCollapse Collapse = All.OfType<RealityCollapse>().Single();
 
     public static byte IdOf(Anomaly anomaly) => (byte)System.Array.IndexOf(All, anomaly);
 
-    /// <summary>Anomalies the current tier has unlocked and the current map can support.</summary>
-    public static List<Anomaly> Unlocked(EntropyTier tier) => All
-        .Where(anomaly => anomaly.Scheduled && anomaly.MinTier <= tier && anomaly.CanRun())
+    /// <summary>What the tier has unlocked and can meaningfully happen to this player.</summary>
+    public static List<Anomaly> Unlocked(EntropyTier tier, PlayerControl target) => All
+        .Where(anomaly => anomaly.Scheduled && anomaly.MinTier <= tier && anomaly.CanRun(target))
         .ToList();
 }

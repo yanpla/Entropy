@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Entropy.Core;
 using HarmonyLib;
 using Reactor.Networking.Attributes;
@@ -9,71 +10,83 @@ using Random = System.Random;
 namespace Entropy.Anomalies;
 
 /// <summary>
-/// Decides when something goes wrong.
+/// Decides who something goes wrong for, and when.
 /// </summary>
 /// <remarks>
-/// The host rolls on a fixed cadence and the odds rise with the meter, so players can
-/// feel chaos coming without being able to predict it. The choice is broadcast as an
-/// id plus a seed; every client then runs the same anomaly and makes the same
-/// decisions from that seed.
+/// Every player runs their own independent schedule, so nobody shares an experience of
+/// the round. The gap shrinks as the shared meter fills, which is the one thing all of
+/// them can see: they can watch chaos coming without being able to compare notes on
+/// what it did. The choice is broadcast as an anomaly id, a target and a seed; every
+/// client runs the same anomaly, and the anomaly confines itself to its target.
 /// </remarks>
 public static class AnomalyDirector
 {
-    private const float RollInterval = 15f;
+    /// <summary>Seconds between one player's anomalies at an empty and at a full meter.</summary>
+    private const float CalmGap = 25f;
+    private const float ChaoticGap = 4f;
 
-    /// <summary>Odds of an anomaly per roll at an empty and a full meter.</summary>
-    private const float MinChance = 0.10f;
-    private const float MaxChance = 0.65f;
+    /// <summary>How far either side of the gap the next one may land, so it can't be counted.</summary>
+    private const float Jitter = 0.3f;
 
     private static readonly Random Rng = new();
-    private static float _timer;
+    private static readonly Dictionary<byte, float> Timers = new();
 
-    public static void Reset() => _timer = RollInterval;
+    public static void Reset() => Timers.Clear();
 
     private static void Tick(float deltaTime)
     {
         if (!AmongUsClient.Instance.AmHost) return;
         if (!ShipStatus.Instance || MeetingHud.Instance || !AmongUsClient.Instance.IsGameStarted) return;
 
-        if (EntropyManager.Value >= EntropyManager.Max)
+        foreach (var player in Players.Alive())
         {
-            Fire(AnomalyRegistry.Collapse);
-            EntropyManager.HostReset();
-            _timer = RollInterval;
+            if (!Timers.TryGetValue(player.PlayerId, out var remaining)) remaining = Gap();
 
-            return;
+            remaining -= deltaTime;
+            if (remaining > 0f)
+            {
+                Timers[player.PlayerId] = remaining;
+
+                continue;
+            }
+
+            Timers[player.PlayerId] = Gap();
+
+            var unlocked = AnomalyRegistry.Unlocked(EntropyManager.Tier, player);
+            if (unlocked.Count == 0) continue;
+
+            Fire(unlocked[Rng.Next(unlocked.Count)], player);
         }
-
-        _timer -= deltaTime;
-        if (_timer > 0f) return;
-        _timer = RollInterval;
-
-        var chance = Mathf.Lerp(MinChance, MaxChance, EntropyManager.Value / EntropyManager.Max);
-        if (Rng.NextDouble() > chance) return;
-
-        var unlocked = AnomalyRegistry.Unlocked(EntropyManager.Tier);
-        if (unlocked.Count == 0) return;
-
-        Fire(unlocked[Rng.Next(unlocked.Count)]);
     }
 
-    private static void Fire(Anomaly anomaly)
+    /// <summary>The wait until a player's next anomaly, from where the meter stands now.</summary>
+    private static float Gap()
     {
-        if (!PlayerControl.LocalPlayer) return;
+        var gap = Mathf.Lerp(CalmGap, ChaoticGap, EntropyManager.Value / EntropyManager.Max);
 
-        RpcRunAnomaly(PlayerControl.LocalPlayer, AnomalyRegistry.IdOf(anomaly), Rng.Next());
+        return gap * (1f + (float)(Rng.NextDouble() * 2d - 1d) * Jitter);
+    }
+
+    private static void Fire(Anomaly anomaly, PlayerControl target)
+    {
+        if (!PlayerControl.LocalPlayer || !target) return;
+
+        RpcRunAnomaly(PlayerControl.LocalPlayer, AnomalyRegistry.IdOf(anomaly), target.PlayerId, Rng.Next());
     }
 
     [MethodRpc((uint)EntropyRpc.RunAnomaly, LocalHandling = RpcLocalHandling.Before)]
-    public static void RpcRunAnomaly(PlayerControl sender, byte id, int seed)
+    public static void RpcRunAnomaly(PlayerControl sender, byte id, byte targetId, int seed)
     {
         if (sender.OwnerId != AmongUsClient.Instance.HostId) return;
         if (id >= AnomalyRegistry.All.Length) return;
 
+        var target = Players.ById(targetId);
+        if (target is null || !target) return;
+
         var anomaly = AnomalyRegistry.All[id];
 
-        Logger<EntropyPlugin>.Info($"Anomaly: {anomaly.Name} (seed {seed})");
-        Coroutines.Start(anomaly.Run(new Random(seed)));
+        Logger<EntropyPlugin>.Info($"Anomaly: {anomaly.Name} on {target.Data?.PlayerName} (seed {seed})");
+        Coroutines.Start(anomaly.Run(target, new Random(seed)));
     }
 
     [HarmonyPatch(typeof(ShipStatus), nameof(ShipStatus.FixedUpdate))]

@@ -19,6 +19,9 @@ public static class Players
         .OrderBy(player => player.PlayerId)
         .ToList();
 
+    public static PlayerControl? ById(byte playerId) => PlayerControl.AllPlayerControls.ToArray()
+        .FirstOrDefault(player => player && player.PlayerId == playerId);
+
     /// <summary>Removes and returns a random entry, so callers can draw without repeats.</summary>
     public static T Draw<T>(this List<T> items, Random rng)
     {
