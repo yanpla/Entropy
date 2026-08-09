@@ -1,3 +1,4 @@
+using Entropy.Anomalies;
 using MiraAPI.Events;
 using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
@@ -53,6 +54,9 @@ public static class EntropyEvents
     public static void OnRoundStart(RoundStartEvent @event)
     {
         // Entropy carries across rounds, but not across games.
-        if (@event.TriggeredByIntro) EntropyManager.HostReset();
+        if (!@event.TriggeredByIntro) return;
+
+        EntropyManager.HostReset();
+        AnomalyDirector.Reset();
     }
 }

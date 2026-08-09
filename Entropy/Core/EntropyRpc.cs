@@ -11,4 +11,7 @@ public enum EntropyRpc : uint
 
     /// <summary>The host telling everyone the authoritative meter value.</summary>
     Set,
+
+    /// <summary>The host telling everyone which anomaly fires, and with what seed.</summary>
+    RunAnomaly,
 }
