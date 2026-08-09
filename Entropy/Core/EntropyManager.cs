@@ -17,7 +17,17 @@ public static class EntropyManager
 {
     public const float Max = 100f;
 
-    /// <summary>Current entropy, 0 to <see cref="Max"/>. Same on every client.</summary>
+    /// <summary>
+    /// How far below empty the meter can bank. A crew that keeps ahead of the killing
+    /// buys itself silence, but only so much of it - without a floor, an early task
+    /// rush would switch the mod off for the rest of the game.
+    /// </summary>
+    public const float Min = -25f;
+
+    /// <summary>
+    /// Current entropy, <see cref="Min"/> to <see cref="Max"/>. Same on every client.
+    /// Negative means the ship is calmer than calm and nothing will happen at all.
+    /// </summary>
     public static float Value { get; private set; }
 
     public static EntropyTier Tier => Value switch
@@ -49,7 +59,7 @@ public static class EntropyManager
     {
         if (!AmongUsClient.Instance.AmHost || !PlayerControl.LocalPlayer) return;
 
-        RpcSet(PlayerControl.LocalPlayer, Mathf.Clamp(value, 0f, Max));
+        RpcSet(PlayerControl.LocalPlayer, Mathf.Clamp(value, Min, Max));
     }
 
     [MethodRpc((uint)EntropyRpc.Report, LocalHandling = RpcLocalHandling.Before)]

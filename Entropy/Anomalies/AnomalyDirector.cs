@@ -38,6 +38,11 @@ public static class AnomalyDirector
         if (!AmongUsClient.Instance.AmHost) return;
         if (!ShipStatus.Instance || MeetingHud.Instance || !AmongUsClient.Instance.IsGameStarted) return;
 
+        // A negative meter is banked quiet: the crew has out-tasked the chaos and
+        // nothing happens to anybody until the killing puts them back above empty.
+        // Timers hold where they are, so the reprieve ends where it interrupted.
+        if (EntropyManager.Value < 0f) return;
+
         foreach (var player in Players.Alive())
         {
             if (!Timers.TryGetValue(player.PlayerId, out var remaining)) remaining = Gap();
