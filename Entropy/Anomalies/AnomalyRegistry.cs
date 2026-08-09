@@ -14,7 +14,6 @@ public static class AnomalyRegistry
 {
     public static readonly Anomaly[] All =
     [
-        new LightsFlicker(),
         new DoorMalfunction(),
         new PhantomSounds(),
         new AnonymousPlayers(),
