@@ -1,4 +1,3 @@
-using System.Linq;
 using Entropy.Modifiers;
 using MiraAPI.Modifiers;
 using Reactor.Networking.Attributes;
@@ -10,8 +9,9 @@ namespace Entropy;
 /// The way an action becomes entropy.
 /// </summary>
 /// <remarks>
-/// The value itself lives on each player's <see cref="EntropyModifier"/>. This is only
-/// the road there: a client says what it did, and the host decides whose entropy moves.
+/// The value itself lives on the <see cref="EntropyModifier"/> of whoever the host
+/// afflicted this game. This is only the road there: a client says what it did, and the
+/// host decides whose entropy moves - which is nobody's, for anyone without one.
 /// </remarks>
 public static class EntropyManager
 {
@@ -24,18 +24,6 @@ public static class EntropyManager
         if (!PlayerControl.LocalPlayer) return;
 
         RpcReport(PlayerControl.LocalPlayer, (byte)source);
-    }
-
-    /// <summary>Hands every living player a fresh, empty modifier. Host only.</summary>
-    public static void HostReset()
-    {
-        if (!AmongUsClient.Instance.AmHost) return;
-
-        foreach (var player in PlayerControl.AllPlayerControls.ToArray().Where(player => player))
-        {
-            if (player.TryGetModifier<EntropyModifier>(out var modifier)) modifier.Reset();
-            else player.RpcAddModifier<EntropyModifier>();
-        }
     }
 
     [MethodRpc((uint)EntropyRpc.Report, LocalHandling = RpcLocalHandling.Before)]

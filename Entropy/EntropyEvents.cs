@@ -1,5 +1,4 @@
 using MiraAPI.Events;
-using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
 using MiraAPI.Events.Vanilla.Player;
 
@@ -27,12 +26,5 @@ public static class EntropyEvents
     public static void OnTaskComplete(CompleteTaskEvent @event)
     {
         if (@event.Player.AmOwner) EntropyManager.Report(EntropySource.TaskComplete);
-    }
-
-    [RegisterEvent]
-    public static void OnRoundStart(RoundStartEvent @event)
-    {
-        // Entropy carries across rounds, but not across games.
-        if (@event.TriggeredByIntro) EntropyManager.HostReset();
     }
 }

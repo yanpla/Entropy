@@ -1,5 +1,7 @@
 using Entropy.Anomalies;
-using MiraAPI.Modifiers;
+using Entropy.Options.Modifiers;
+using MiraAPI.GameOptions;
+using MiraAPI.Modifiers.Types;
 using UnityEngine;
 using Random = System.Random;
 
@@ -9,16 +11,17 @@ namespace Entropy.Modifiers;
 /// One player's entropy, and the countdown to whatever it is about to do to them.
 /// </summary>
 /// <remarks>
-/// Hidden: it has no description, so Mira never draws it, and the player it is attached
-/// to is never told it exists. Everyone carries one, so two people standing in the same
-/// room can be having entirely different games.
+/// Assigned at the start of the game like a role, in whatever quantity the host set.
+/// The player is never told: it has no description and is never drawn, so an afflicted
+/// player and an unafflicted one see exactly the same screen until something happens
+/// that should not have. Not knowing whether you have it is the point - a player who
+/// could check would just be a player with a strange role.
 /// <para>
 /// Every client holds a copy, but only the host's copy is ever written to - it is the
-/// only thing that sees every report and the only thing scheduling anomalies. The other
-/// copies just sit there at zero.
+/// only thing that sees every report and the only thing scheduling anomalies.
 /// </para>
 /// </remarks>
-public class EntropyModifier : BaseModifier
+public class EntropyModifier : GameModifier
 {
     public const float Max = 100f;
 
@@ -42,6 +45,11 @@ public class EntropyModifier : BaseModifier
 
     public override string ModifierName => "Entropy";
 
+    /// <summary>Never drawn, and never listed in freeplay. They are not to know.</summary>
+    public override bool HideOnUi => true;
+
+    public override bool ShowInFreeplay => false;
+
     public float Value { get; private set; }
 
     public EntropyTier Tier => Value switch
@@ -52,6 +60,12 @@ public class EntropyModifier : BaseModifier
         _ => EntropyTier.Critical,
     };
 
+    public override int GetAmountPerGame() => (int)OptionGroupSingleton<EntropyModifierSettings>.Instance.Amount;
+
+    public override int GetAssignmentChance() => (int)OptionGroupSingleton<EntropyModifierSettings>.Instance.Chance;
+
+    public override void OnActivate() => _timer = Gap();
+
     /// <summary>Moves this player's entropy. Host only, so every copy agrees by not trying.</summary>
     public void Add(EntropySource source)
     {
@@ -60,13 +74,7 @@ public class EntropyModifier : BaseModifier
         Value = Mathf.Clamp(Value + source.Weight(), Min, Max);
     }
 
-    public void Reset()
-    {
-        Value = 0f;
-        _timer = Gap();
-    }
-
-    /// <summary>Nobody performs a meeting, so everyone pays for it.</summary>
+    /// <summary>Nobody performs a meeting, so everyone carrying this pays for it.</summary>
     public override void OnMeetingStart() => Add(EntropySource.Meeting);
 
     public override void FixedUpdate()
