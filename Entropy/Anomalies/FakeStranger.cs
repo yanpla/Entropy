@@ -18,18 +18,18 @@ namespace Entropy.Anomalies;
 /// avoid being mistaken for people.
 /// <para>
 /// It wears a living player's outfit and name and walks routes a player could have
-/// walked, then disappears the moment the target comes close enough to be sure. Nothing
-/// the target can do will confirm it happened, which is the entire idea.
+/// walked. You can follow it, catch it up, stand in it - it just keeps walking, and then
+/// one moment it is not there. Nothing you did made it go, and nothing you can do will
+/// prove it was ever there, which is the entire idea.
 /// </para>
 /// </remarks>
 public class FakeStranger : Anomaly
 {
     private const float Lifetime = 25f;
 
-    /// <summary>How far away it appears, and how close the target has to get to dispel it.</summary>
+    /// <summary>How far away it first appears.</summary>
     private const float MinDistance = 5f;
     private const float MaxDistance = 7f;
-    private const float VanishRange = 3f;
 
     /// <summary>How far it will wander for in one go.</summary>
     private const float WanderMin = 3f;
@@ -73,7 +73,6 @@ public class FakeStranger : Anomaly
         for (var elapsed = 0f; elapsed < Lifetime; elapsed += Time.deltaTime)
         {
             if (!stranger || !target) break;
-            if (Vector2.Distance(target.GetTruePosition(), Where(stranger)) < VanishRange) break;
 
             if (route.Count == 0)
             {
