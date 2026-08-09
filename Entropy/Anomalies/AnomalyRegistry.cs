@@ -16,7 +16,7 @@ public static class AnomalyRegistry
     [
         new DoorMalfunction(),
         new PhantomSounds(),
-        new AnonymousPlayers(),
+        new Shapeshift(),
         new FakeSabotage(),
         new Displacement(),
         new FakeStranger(),

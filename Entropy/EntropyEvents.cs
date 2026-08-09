@@ -41,6 +41,13 @@ public static class EntropyEvents
         if (@event.Source.AmOwner) EntropyManager.Report(EntropySource.Kill);
     }
 
+    /// <summary>
+    /// A round starts once everyone has seen who is missing, so every death behind us is
+    /// now common knowledge and only the next one can be a secret.
+    /// </summary>
+    [RegisterEvent]
+    public static void OnRoundStart(RoundStartEvent @event) => Players.Bury();
+
     /// <summary>Everyone walks out of a meeting calm, whatever they walked in as.</summary>
     [RegisterEvent]
     public static void OnMeetingEnd(EndMeetingEvent @event)
