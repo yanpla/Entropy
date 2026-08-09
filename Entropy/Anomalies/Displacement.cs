@@ -1,6 +1,4 @@
 using System.Collections;
-using System.Linq;
-using UnityEngine;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;
@@ -18,16 +16,14 @@ public class Displacement : Anomaly
 
     public override EntropyTier MinTier => EntropyTier.Critical;
 
-    public override bool CanRun(PlayerControl target) => ShipStatus.Instance.AllVents.Length > 0;
-
     public override IEnumerator Run(PlayerControl target, Random rng)
     {
-        var vents = ShipStatus.Instance.AllVents.ToArray().OrderBy(vent => vent.Id).ToList();
-        var destination = vents[rng.Next(vents.Count)].transform.position;
-
         // Only the owning client moves its own player; the snap networks from there.
-        if (target.AmOwner) target.NetTransform.RpcSnapTo(new Vector2(destination.x, destination.y));
+        if (!target.AmOwner) yield break;
 
-        yield break;
+        // Nowhere clear to arrive: staying put beats landing through the floor.
+        if (Placement.Find(rng) is not { } spot) yield break;
+
+        target.NetTransform.RpcSnapTo(spot);
     }
 }

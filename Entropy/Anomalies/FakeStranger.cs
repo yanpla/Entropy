@@ -10,16 +10,24 @@ namespace Entropy.Anomalies;
 /// Somebody is standing over there. They are not.
 /// </summary>
 /// <remarks>
-/// Wears a living player's outfit and name, at a distance the target can see but not
-/// touch, and disappears the moment they come close enough to be sure. Nothing the
-/// target can do will confirm it happened, which is the entire idea.
+/// Built from the real player prefab rather than the intro cutscene's dummy, so the
+/// hat, visor and skin sit where they are supposed to and it is exactly player sized.
+/// Vanilla's own <see cref="PlayerControl.notRealPlayer"/> flag keeps it out of
+/// <see cref="PlayerControl.AllPlayerControls"/>, which is how the tutorial's dummies
+/// avoid being mistaken for people.
+/// <para>
+/// It wears a living player's outfit and name, stands at a distance the target can see
+/// but not touch, and disappears the moment they come close enough to be sure. Nothing
+/// the target can do will confirm it happened, which is the entire idea.
+/// </para>
 /// </remarks>
 public class FakeStranger : Anomaly
 {
     private const float Lifetime = 20f;
 
     /// <summary>How far away it appears, and how close the target has to get to dispel it.</summary>
-    private const float Distance = 6f;
+    private const float MinDistance = 5f;
+    private const float MaxDistance = 7f;
     private const float VanishRange = 3f;
 
     public override string Name => "Someone is standing there";
@@ -27,7 +35,7 @@ public class FakeStranger : Anomaly
     public override EntropyTier MinTier => EntropyTier.Unstable;
 
     public override bool CanRun(PlayerControl target) =>
-        HudManager.Instance && HudManager.Instance.IntroPrefab && Players.Alive().Any(player => player != target);
+        AmongUsClient.Instance.PlayerPrefab && Players.Alive().Any(player => player != target);
 
     public override IEnumerator Run(PlayerControl target, Random rng)
     {
@@ -36,24 +44,19 @@ public class FakeStranger : Anomaly
         var candidates = Players.Alive().Where(player => player != target).ToList();
         if (candidates.Count == 0) yield break;
 
+        var feet = target.GetTruePosition();
+
+        // Nowhere in sight to stand: better no stranger than one inside a wall.
+        if (Placement.Find(rng, feet, MinDistance, MaxDistance) is not { } spot) yield break;
+
         var impersonated = candidates[rng.Next(candidates.Count)];
+        var stranger = Object.Instantiate(AmongUsClient.Instance.PlayerPrefab);
 
-        var stranger = Object.Instantiate(HudManager.Instance.IntroPrefab.PlayerPrefab);
-        stranger.gameObject.name = "EntropyStranger";
-        stranger.gameObject.layer = target.gameObject.layer;
-        stranger.UpdateFromPlayerOutfit(
-            impersonated.Data.DefaultOutfit,
-            PlayerMaterial.MaskType.None,
-            false,
-            false);
-        stranger.SetName(impersonated.Data.PlayerName);
-        MatchSizeTo(stranger, impersonated);
+        Disown(stranger);
+        Dress(stranger, impersonated);
 
-        var angle = (float)(rng.NextDouble() * System.Math.PI * 2d);
-        var spot = target.transform.position + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * Distance;
-        spot.z = spot.y / 1000f;
-        stranger.transform.position = spot;
-        stranger.SetFlipX(spot.x < target.transform.position.x);
+        stranger.transform.position = new Vector3(spot.x, spot.y, spot.y / 1000f);
+        stranger.cosmetics.SetFlipX(spot.x < feet.x);
 
         // Gone before they can get a proper look, and gone anyway if they never try.
         for (var elapsed = 0f; elapsed < Lifetime; elapsed += Time.deltaTime)
@@ -67,21 +70,41 @@ public class FakeStranger : Anomaly
     }
 
     /// <summary>
-    /// Shrinks the dummy until it is the size of the player it is pretending to be.
+    /// Takes a freshly built player back out of the game it just joined.
     /// </summary>
     /// <remarks>
-    /// The prefab comes from the intro cutscene, which is drawn at cutscene size and so
-    /// arrives on the map several times too big. Measuring both bodies and dividing beats
-    /// a hardcoded factor: it stays correct whoever is impersonated and whatever the
-    /// cutscene is rescaled to.
+    /// Awake has already registered it, so the flag goes on and the registration comes
+    /// off by hand. Everything that would make it behave like a player is switched off:
+    /// it has no data to run on, and it is meant to be scenery.
     /// </remarks>
-    private static void MatchSizeTo(PoolablePlayer stranger, PlayerControl impersonated)
+    private static void Disown(PlayerControl stranger)
     {
-        var theirs = impersonated.cosmetics.currentBodySprite.BodySprite;
-        var ours = stranger.Cosmetics.currentBodySprite.BodySprite;
+        stranger.notRealPlayer = true;
+        PlayerControl.AllPlayerControls.Remove(stranger);
 
-        if (!theirs || !ours || ours.bounds.size.y <= 0f) return;
+        stranger.enabled = false;
+        if (stranger.MyPhysics) stranger.MyPhysics.enabled = false;
+        if (stranger.NetTransform) stranger.NetTransform.enabled = false;
+        if (stranger.Collider) stranger.Collider.enabled = false;
+    }
 
-        stranger.transform.localScale *= theirs.bounds.size.y / ours.bounds.size.y;
+    /// <summary>
+    /// Dresses it as somebody who is still alive.
+    /// </summary>
+    /// <remarks>
+    /// Straight onto the cosmetics layer rather than through the PlayerControl helpers,
+    /// which write back to player data this thing does not have.
+    /// </remarks>
+    private static void Dress(PlayerControl stranger, PlayerControl impersonated)
+    {
+        var outfit = impersonated.Data.DefaultOutfit;
+        var cosmetics = stranger.cosmetics;
+
+        cosmetics.SetColor(outfit.ColorId);
+        cosmetics.SetHat(outfit.HatId, outfit.ColorId);
+        cosmetics.SetVisor(outfit.VisorId, outfit.ColorId);
+        cosmetics.SetSkin(outfit.SkinId, outfit.ColorId);
+        cosmetics.SetName(outfit.PlayerName);
+        cosmetics.ToggleNameVisible(true);
     }
 }
