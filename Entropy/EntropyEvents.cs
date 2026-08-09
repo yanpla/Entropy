@@ -1,6 +1,9 @@
+using System.Linq;
+using Entropy.Anomalies;
 using MiraAPI.Events;
 using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
+using MiraAPI.Events.Vanilla.Meeting;
 using MiraAPI.Events.Vanilla.Player;
 
 namespace Entropy;
@@ -34,5 +37,32 @@ public static class EntropyEvents
     public static void OnMurder(AfterMurderEvent @event)
     {
         if (@event.Source.AmOwner) EntropyManager.Report(EntropySource.Kill);
+    }
+
+    /// <summary>
+    /// Swallows the report of a body that was never there.
+    /// </summary>
+    /// <remarks>
+    /// Mira raises this from both the host's report path and the outgoing network
+    /// message, so cancelling here stops the meeting whoever called it - unlike
+    /// patching CmdReportDeadBody, which il2cpp inlines and Harmony never reaches.
+    /// The clicked body has already had <see cref="DeadBody.Reported"/> set by the time
+    /// we get here, so the flagged fake is the one that was just reported.
+    /// </remarks>
+    [RegisterEvent]
+    public static void OnReportBody(ReportBodyEvent @event)
+    {
+        if (!@event.Reporter.AmOwner) return;
+
+        // Drop destroyed entries first, or a stale one would swallow a real report.
+        FakeBody.Fakes.RemoveAll(body => !body);
+
+        var reported = FakeBody.Fakes.FirstOrDefault(body => body.Reported);
+        if (reported is null) return;
+
+        FakeBody.Forget(reported);
+        EntropyManager.Report(EntropySource.FalseReport);
+
+        @event.Cancel();
     }
 }

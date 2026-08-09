@@ -39,8 +39,10 @@ public class FakeBody : Anomaly
         var victim = candidates[rng.Next(candidates.Count)];
         var body = Object.Instantiate(GameManager.Instance.GetDeadBody(victim.Data.Role));
 
-        // Disabled the same way a real corpse is; nothing about it needs to think.
-        body.enabled = false;
+        // Must stay enabled: the report button only lights up for bodies whose component
+        // is enabled. The kill animation disables one while it plays and turns it back
+        // on afterwards, and copying only the first half is what left this unreportable.
+        body.enabled = true;
         body.ParentId = victim.PlayerId;
 
         for (var i = 0; i < body.bodyRenderers.Length; i++) victim.SetPlayerMaterialColors(body.bodyRenderers[i]);
