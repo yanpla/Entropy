@@ -1,5 +1,4 @@
 using System.Collections;
-using Entropy.Core;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;

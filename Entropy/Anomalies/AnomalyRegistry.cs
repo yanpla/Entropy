@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Entropy.Core;
 
 namespace Entropy.Anomalies;
 

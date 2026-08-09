@@ -1,4 +1,4 @@
-namespace Entropy.Core;
+namespace Entropy;
 
 /// <summary>
 /// The quarter of the meter the game is currently in. Anomalies unlock by tier.

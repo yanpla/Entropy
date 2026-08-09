@@ -1,4 +1,4 @@
-namespace Entropy.Core;
+namespace Entropy;
 
 /// <summary>
 /// Rpc ids owned by this mod. Reactor scopes these per mod, so they can't clash
@@ -9,9 +9,6 @@ public enum EntropyRpc : uint
     /// <summary>A client telling the host it performed an <see cref="EntropySource"/>.</summary>
     Report,
 
-    /// <summary>The host telling everyone the authoritative meter value.</summary>
-    Set,
-
-    /// <summary>The host telling everyone which anomaly fires, and with what seed.</summary>
+    /// <summary>The host telling everyone which anomaly fires, on whom, and with what seed.</summary>
     RunAnomaly,
 }
