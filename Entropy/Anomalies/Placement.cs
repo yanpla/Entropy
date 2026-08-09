@@ -37,6 +37,10 @@ public static class Placement
     private static ShipStatus? _mapped;
     private static List<Vector2> _spots = [];
 
+    /// <summary>The lattice the fill reached, and where its origin sits in the world.</summary>
+    private static HashSet<(int X, int Y)> _cells = [];
+    private static Vector2 _anchor;
+
     /// <summary>
     /// A random spot a player could have walked to, or null if nothing is in range.
     /// </summary>
@@ -62,13 +66,67 @@ public static class Placement
         return spots.Count == 0 ? null : spots[rng.Next(spots.Count)];
     }
 
+    /// <summary>
+    /// Waypoints from one spot to another that never cross anything solid, or null when
+    /// there is no way round.
+    /// </summary>
+    /// <remarks>
+    /// A breadth first search over the same lattice the fill produced. It is walking the
+    /// exact set of cells a player could have reached on foot, so any route it returns is
+    /// one a player could have taken.
+    /// </remarks>
+    public static List<Vector2>? Route(Vector2 from, Vector2 to)
+    {
+        if (Reachable().Count == 0) return null;
+
+        var start = Cell(from);
+        var goal = Cell(to);
+
+        if (!_cells.Contains(start) || !_cells.Contains(goal)) return null;
+
+        var cameFrom = new Dictionary<(int X, int Y), (int X, int Y)>();
+        var seen = new HashSet<(int X, int Y)> { start };
+        var queue = new Queue<(int X, int Y)>();
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            var cell = queue.Dequeue();
+
+            if (cell == goal) return Retrace(cameFrom, start, goal);
+
+            foreach (var next in Neighbours(cell).Where(next => _cells.Contains(next) && seen.Add(next)))
+            {
+                cameFrom[next] = cell;
+                queue.Enqueue(next);
+            }
+        }
+
+        return null;
+    }
+
+    private static List<Vector2> Retrace(
+        Dictionary<(int X, int Y), (int X, int Y)> cameFrom,
+        (int X, int Y) start,
+        (int X, int Y) goal)
+    {
+        var route = new List<Vector2>();
+
+        for (var cell = goal; cell != start; cell = cameFrom[cell]) route.Add(World(cell));
+
+        route.Reverse();
+
+        return route;
+    }
+
     private static List<Vector2> Reachable()
     {
         if (_mapped == ShipStatus.Instance && _spots.Count > 0) return _spots;
         if (!ShipStatus.Instance || !PlayerControl.LocalPlayer) return [];
 
         _mapped = ShipStatus.Instance;
-        _spots = Fill(PlayerControl.LocalPlayer.GetTruePosition());
+        _anchor = PlayerControl.LocalPlayer.GetTruePosition();
+        Fill();
 
         Logger<EntropyPlugin>.Info($"Placement mapped {_spots.Count} reachable spots");
 
@@ -76,41 +134,51 @@ public static class Placement
     }
 
     /// <summary>
-    /// Every spot reachable from <paramref name="start"/> without passing through
-    /// anything solid.
+    /// Every spot reachable from <see cref="_anchor"/> without passing through anything
+    /// solid.
     /// </summary>
-    private static List<Vector2> Fill(Vector2 start)
+    private static void Fill()
     {
-        var spots = new List<Vector2>();
-        var seen = new HashSet<(int X, int Y)>();
-        var queue = new Queue<(int X, int Y)>();
+        _spots = [];
+        _cells = [];
 
-        seen.Add((0, 0));
+        var seen = new HashSet<(int X, int Y)> { (0, 0) };
+        var queue = new Queue<(int X, int Y)>();
         queue.Enqueue((0, 0));
 
-        while (queue.Count > 0 && spots.Count < MaxSpots)
+        while (queue.Count > 0 && _spots.Count < MaxSpots)
         {
             var cell = queue.Dequeue();
-            var spot = start + new Vector2(cell.X * Step, cell.Y * Step);
 
-            if (Blocked(spot)) continue;
+            if (Blocked(World(cell))) continue;
 
-            spots.Add(spot);
+            _cells.Add(cell);
+            _spots.Add(World(cell));
 
-            // Four directions only. Diagonals would let the fill slip through the corner
-            // where two walls meet and escape the ship.
-            foreach (var next in new[]
-                     {
-                         (cell.X + 1, cell.Y), (cell.X - 1, cell.Y),
-                         (cell.X, cell.Y + 1), (cell.X, cell.Y - 1),
-                     })
+            foreach (var next in Neighbours(cell))
             {
                 if (seen.Add(next)) queue.Enqueue(next);
             }
         }
-
-        return spots;
     }
+
+    /// <summary>
+    /// Four directions only. Diagonals would let a fill slip through the corner where two
+    /// walls meet and escape the ship, and would let a walker cut the same corner.
+    /// </summary>
+    private static IEnumerable<(int X, int Y)> Neighbours((int X, int Y) cell)
+    {
+        yield return (cell.X + 1, cell.Y);
+        yield return (cell.X - 1, cell.Y);
+        yield return (cell.X, cell.Y + 1);
+        yield return (cell.X, cell.Y - 1);
+    }
+
+    private static Vector2 World((int X, int Y) cell) => _anchor + new Vector2(cell.X * Step, cell.Y * Step);
+
+    private static (int X, int Y) Cell(Vector2 world) => (
+        Mathf.RoundToInt((world.x - _anchor.x) / Step),
+        Mathf.RoundToInt((world.y - _anchor.y) / Step));
 
     /// <summary>
     /// Whether something solid is sitting on this spot.
