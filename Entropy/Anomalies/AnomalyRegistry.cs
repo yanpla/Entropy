@@ -21,7 +21,11 @@ public static class AnomalyRegistry
         new Displacement(),
         new FakeStranger(),
         new FakeBody(),
+        new RealityCollapse(),
     ];
+
+    /// <summary>The one anomaly nothing rolls for; the meter has to fill.</summary>
+    public static readonly RealityCollapse Collapse = All.OfType<RealityCollapse>().Single();
 
     public static byte IdOf(Anomaly anomaly) => (byte)System.Array.IndexOf(All, anomaly);
 

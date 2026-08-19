@@ -43,6 +43,9 @@ public class EntropyModifier : GameModifier
 
     private float _timer;
 
+    /// <summary>Stops the desktop filling with windows while the meter sits at the top.</summary>
+    private bool _collapsed;
+
     public override string ModifierName => "Entropy";
 
     /// <summary>Never drawn, and never listed in freeplay. They are not to know.</summary>
@@ -90,6 +93,7 @@ public class EntropyModifier : GameModifier
 
         Value = 0f;
         _timer = Gap();
+        _collapsed = false;
     }
 
     public override void FixedUpdate()
@@ -100,6 +104,14 @@ public class EntropyModifier : GameModifier
 
         // The meter fills by itself. Standing still is the losing move for everyone.
         Shift(Max / OptionGroupSingleton<EntropyModifierSettings>.Instance.SecondsToFill * Time.fixedDeltaTime);
+
+        // The meter is full. Something leaves the game and turns up on their desktop, and
+        // it only happens once until a meeting settles them back down.
+        if (Value >= Max && !_collapsed)
+        {
+            _collapsed = true;
+            AnomalyDirector.Fire(AnomalyRegistry.Collapse, Player);
+        }
 
         // Negative is banked quiet: this player has got far enough ahead of the drift
         // that nothing happens to them until it catches back up. The timer holds where
