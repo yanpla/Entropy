@@ -17,6 +17,8 @@ public class EntropyModifierSettings : AbstractOptionGroup<EntropyModifier>
 {
     public override string GroupName => "Entropy";
 
+    public override MenuCategory ParentMenu => MenuCategory.Modifiers;
+
     [ModdedNumberOption("Afflicted Players", 0, 15)]
     public float Amount { get; set; }
 
