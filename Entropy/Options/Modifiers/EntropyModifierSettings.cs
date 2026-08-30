@@ -20,7 +20,7 @@ public class EntropyModifierSettings : AbstractOptionGroup<EntropyModifier>
     public override MenuCategory ParentMenu => MenuCategory.Modifiers;
 
     [ModdedNumberOption("Afflicted Players", 0, 15)]
-    public float Amount { get; set; }
+    public float Amount { get; set; } = 1;
 
     [ModdedNumberOption("Chance", 0, 100, 10, MiraNumberSuffixes.Percent)]
     public float Chance { get; set; } = 100;
