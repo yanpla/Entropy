@@ -1,0 +1,49 @@
+name: CI
+
+on: [workflow_dispatch, push, pull_request]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.cache/bepinex
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'nuget.config', 'build.cake') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build
+        uses: cake-build/cake-action@v2
+        with:
+          cake-version: 5.0.0
+          verbosity: Diagnostic
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Entropy.dll
+          path: Entropy/bin/Release/net6.0/Entropy.dll
+          if-no-files-found: error
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        with:
+          draft: true
+          files: Entropy/bin/Release/net6.0/Entropy.dll
+          fail_on_unmatched_files: true

@@ -15,14 +15,14 @@ Task("Build")
 
     if (tag != null) 
     {
-        settings.MSBuildSettings.Version = tag;
+        settings.MSBuildSettings.Version = tag.TrimStart('v');
     }
     else if (buildId != 0)
     {
         settings.MSBuildSettings.VersionSuffix = "ci." + buildId;
     }
 
-    DotNetBuild(".", settings);
+    DotNetBuild("Entropy.slnx", settings);
 });
 
 RunTarget(target);
