@@ -1,3 +1,4 @@
+using Entropy.Utilities;
 using System.Collections;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -22,7 +23,7 @@ public class FakeStranger : Anomaly
 
     public override string Name => "Someone is walking there";
 
-    public override EntropyTier MinTier => EntropyTier.Unstable;
+    public override float MinEntropy => 25f;
 
     public override bool CanRun(PlayerControl target) =>
         AmongUsClient.Instance.PlayerPrefab && Players.Alive().Any(player => player != target);

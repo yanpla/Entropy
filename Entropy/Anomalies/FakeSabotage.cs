@@ -9,7 +9,7 @@ public class FakeSabotage : Anomaly
 {
     public override string Name => "The ship turns on you";
 
-    public override EntropyTier MinTier => EntropyTier.Volatile;
+    public override float MinEntropy => 50f;
 
     public override IEnumerator Run(PlayerControl target, Random rng)
     {

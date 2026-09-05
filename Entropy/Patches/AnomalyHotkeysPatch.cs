@@ -17,14 +17,14 @@ public static class AnomalyHotkeysPatch
         // Otherwise typing a number into chat sets off an anomaly.
         if (__instance.Chat && __instance.Chat.IsOpenOrOpening) return;
 
-        for (var index = 0; index < AnomalyRegistry.All.Length && index < 9; index++)
+        for (var index = 0; index < AnomalyManager.All.Length && index < 9; index++)
         {
             if (!Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + index))) continue;
 
-            var anomaly = AnomalyRegistry.All[index];
+            var anomaly = AnomalyManager.All[index];
 
             Logger<EntropyPlugin>.Info($"Hotkey {index + 1} fired {anomaly.Name}");
-            AnomalyDirector.Fire(anomaly, PlayerControl.LocalPlayer);
+            AnomalyManager.Fire(anomaly, PlayerControl.LocalPlayer);
         }
     }
 }

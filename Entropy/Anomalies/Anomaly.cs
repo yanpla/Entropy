@@ -8,7 +8,7 @@ public abstract class Anomaly
 {
     public abstract string Name { get; }
 
-    public abstract EntropyTier MinTier { get; }
+    public abstract float MinEntropy { get; }
 
     // Unscheduled anomalies are fired explicitly, such as reality collapse.
     public virtual bool Scheduled => true;

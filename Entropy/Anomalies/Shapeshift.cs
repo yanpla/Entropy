@@ -1,3 +1,4 @@
+using Entropy.Utilities;
 using System.Collections;
 using UnityEngine;
 using Random = System.Random;
@@ -11,7 +12,7 @@ public class Shapeshift : Anomaly
 
     public override string Name => "Someone is wearing another face";
 
-    public override EntropyTier MinTier => EntropyTier.Volatile;
+    public override float MinEntropy => 50f;
 
     public override bool CanRun(PlayerControl target) =>
         Shifters(target).Count > 0 && Players.PresumedAlive().Count > 1;

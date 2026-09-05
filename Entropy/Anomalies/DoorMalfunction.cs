@@ -11,7 +11,7 @@ public class DoorMalfunction : Anomaly
 
     public override string Name => "The doors have a mind of their own";
 
-    public override EntropyTier MinTier => EntropyTier.Stable;
+    public override float MinEntropy => 0f;
 
     public override bool CanRun(PlayerControl target) => ShipStatus.Instance.AllDoors.Count > 0;
 

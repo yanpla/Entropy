@@ -33,14 +33,6 @@ public class EntropyModifier : GameModifier
 
     public float Value { get; private set; }
 
-    public EntropyTier Tier => Value switch
-    {
-        < 25f => EntropyTier.Stable,
-        < 50f => EntropyTier.Unstable,
-        < 75f => EntropyTier.Volatile,
-        _ => EntropyTier.Critical,
-    };
-
     public override int GetAmountPerGame() => (int)OptionGroupSingleton<EntropyModifierSettings>.Instance.Amount;
 
     public override int GetAssignmentChance() => (int)OptionGroupSingleton<EntropyModifierSettings>.Instance.Chance;
@@ -51,7 +43,16 @@ public class EntropyModifier : GameModifier
     {
         if (!AmongUsClient.Instance.AmHost) return;
 
-        Shift(source.Weight());
+        var options = OptionGroupSingleton<EntropyModifierSettings>.Instance;
+        var amount = source switch
+        {
+            EntropySource.Sabotage => 8f,
+            EntropySource.TaskComplete => -options.TaskReward,
+            EntropySource.Kill => -options.KillReward,
+            EntropySource.FalseReport => 12f,
+            _ => 0f,
+        };
+        Shift(amount);
     }
 
     private void Shift(float delta) => Value = Mathf.Clamp(Value + delta, Min, Max);
@@ -77,7 +78,7 @@ public class EntropyModifier : GameModifier
         if (Value >= Max && !_collapsed)
         {
             _collapsed = true;
-            AnomalyDirector.Fire(AnomalyRegistry.Collapse, Player);
+            AnomalyManager.Fire(AnomalyManager.Collapse, Player);
         }
 
         // Pause the anomaly timer while entropy is negative.
@@ -88,10 +89,7 @@ public class EntropyModifier : GameModifier
 
         _timer = NextDelay();
 
-        var unlocked = AnomalyRegistry.Unlocked(Tier, Player);
-        if (unlocked.Count == 0) return;
-
-        AnomalyDirector.Fire(unlocked[Rng.Next(unlocked.Count)], Player);
+        AnomalyManager.FireRandom(Player, Value);
     }
 
     private float NextDelay()

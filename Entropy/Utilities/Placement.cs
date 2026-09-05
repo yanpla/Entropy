@@ -2,7 +2,7 @@ using Reactor.Utilities;
 using UnityEngine;
 using Random = System.Random;
 
-namespace Entropy.Anomalies;
+namespace Entropy.Utilities;
 
 // Caches a walkable grid flood-filled from the local player; empty space alone does not prove reachability.
 public static class Placement

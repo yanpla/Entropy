@@ -9,7 +9,7 @@ public class PhantomSounds : Anomaly
 {
     public override string Name => "You hear something";
 
-    public override EntropyTier MinTier => EntropyTier.Unstable;
+    public override float MinEntropy => 25f;
 
     public override bool CanRun(PlayerControl target) => ShipStatus.Instance.VentEnterSound;
 

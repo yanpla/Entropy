@@ -1,4 +1,4 @@
-namespace Entropy.Anomalies;
+namespace Entropy.Utilities;
 
 // Sorts player lookups by ID so seeded choices use a consistent order.
 public static class Players

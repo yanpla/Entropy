@@ -1,35 +1,40 @@
 using Entropy.Anomalies;
 using Entropy.Modifiers;
+using Entropy.Networking;
 using MiraAPI.Events;
-using MiraAPI.Modifiers;
 using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
 using MiraAPI.Events.Vanilla.Meeting;
 using MiraAPI.Events.Vanilla.Player;
 
-namespace Entropy;
+namespace Entropy.Events;
 
 // Reports gameplay actions and resets entropy after meetings.
-public static class EntropyEvents
+public static class EntropyEventHandlers
 {
+    private static void Report(EntropySource source)
+    {
+        if (PlayerControl.LocalPlayer) PlayerControl.LocalPlayer.RpcReportEntropy((byte)source);
+    }
+
     [RegisterEvent]
     public static void OnSabotage(UpdateSystemEvent @event)
     {
         // Every sabotage is requested through the Sabotage system; the other system
         // updates are repairs, doors and map noise.
-        if (@event.SystemType == SystemTypes.Sabotage) EntropyManager.Report(EntropySource.Sabotage);
+        if (@event.SystemType == SystemTypes.Sabotage) Report(EntropySource.Sabotage);
     }
 
     [RegisterEvent]
     public static void OnTaskComplete(CompleteTaskEvent @event)
     {
-        if (@event.Player.AmOwner) EntropyManager.Report(EntropySource.TaskComplete);
+        if (@event.Player.AmOwner) Report(EntropySource.TaskComplete);
     }
 
     [RegisterEvent]
     public static void OnMurder(AfterMurderEvent @event)
     {
-        if (@event.Source.AmOwner) EntropyManager.Report(EntropySource.Kill);
+        if (@event.Source.AmOwner) Report(EntropySource.Kill);
     }
 
     [RegisterEvent]
@@ -50,7 +55,7 @@ public static class EntropyEvents
         if (!@event.Reporter.AmOwner) return;
 
         if (!FakeBody.TryRemoveReported()) return;
-        EntropyManager.Report(EntropySource.FalseReport);
+        Report(EntropySource.FalseReport);
 
         @event.Cancel();
     }

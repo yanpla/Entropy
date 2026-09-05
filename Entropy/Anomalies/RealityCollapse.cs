@@ -13,7 +13,7 @@ public class RealityCollapse : Anomaly
 
     public override string Name => "REALITY COLLAPSE";
 
-    public override EntropyTier MinTier => EntropyTier.Critical;
+    public override float MinEntropy => 75f;
 
     public override bool Scheduled => false;
 

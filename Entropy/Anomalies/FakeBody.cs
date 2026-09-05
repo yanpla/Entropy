@@ -1,3 +1,4 @@
+using Entropy.Utilities;
 using System.Collections;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -17,7 +18,7 @@ public class FakeBody : Anomaly
 
     public override string Name => "There is a body";
 
-    public override EntropyTier MinTier => EntropyTier.Volatile;
+    public override float MinEntropy => 50f;
 
     public override bool CanRun(PlayerControl target) => Players.Alive().Any(player => player != target);
 

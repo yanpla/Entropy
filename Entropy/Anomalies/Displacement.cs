@@ -1,3 +1,4 @@
+using Entropy.Utilities;
 using System.Collections;
 using Random = System.Random;
 
@@ -8,7 +9,7 @@ public class Displacement : Anomaly
 {
     public override string Name => "You are somewhere else";
 
-    public override EntropyTier MinTier => EntropyTier.Critical;
+    public override float MinEntropy => 75f;
 
     public override IEnumerator Run(PlayerControl target, Random rng)
     {
