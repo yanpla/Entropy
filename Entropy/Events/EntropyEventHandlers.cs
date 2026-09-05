@@ -1,11 +1,13 @@
 using Entropy.Anomalies;
 using Entropy.Modifiers;
 using Entropy.Networking;
+using Entropy.Utilities;
 using MiraAPI.Events;
 using MiraAPI.Events.Vanilla.Gameplay;
 using MiraAPI.Events.Vanilla.Map;
 using MiraAPI.Events.Vanilla.Meeting;
 using MiraAPI.Events.Vanilla.Player;
+using MiraAPI.Modifiers;
 
 namespace Entropy.Events;
 
