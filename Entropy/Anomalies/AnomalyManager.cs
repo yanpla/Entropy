@@ -7,8 +7,6 @@ public static class AnomalyManager
 {
     private static readonly Random Rng = new();
 
-    public static readonly RealityCollapse Collapse = new();
-
     // Array indices are RPC IDs. Append entries without changing existing positions.
     public static readonly Anomaly[] All =
     [
@@ -19,13 +17,11 @@ public static class AnomalyManager
         new Displacement(),
         new FakeStranger(),
         new FakeBody(),
-        Collapse,
     ];
 
     public static void FireRandom(PlayerControl target, float entropy)
     {
-        var choices = All.Where(anomaly => anomaly.Scheduled
-            && anomaly.MinEntropy <= entropy && anomaly.CanRun(target)).ToList();
+        var choices = All.Where(anomaly => anomaly.MinEntropy <= entropy && anomaly.CanRun(target)).ToList();
 
         if (choices.Count > 0) Fire(choices[Rng.Next(choices.Count)], target);
     }

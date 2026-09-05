@@ -23,8 +23,6 @@ public class EntropyModifier : GameModifier
 
     private float _timer;
 
-    private bool _collapsed;
-
     public override string ModifierName => "Entropy";
 
     public override bool HideOnUi => true;
@@ -63,7 +61,6 @@ public class EntropyModifier : GameModifier
 
         Value = 0f;
         _timer = NextDelay();
-        _collapsed = false;
     }
 
     public override void FixedUpdate()
@@ -73,13 +70,6 @@ public class EntropyModifier : GameModifier
         if (Player.Data is not { IsDead: false, Disconnected: false }) return;
 
         Shift(Max / OptionGroupSingleton<EntropyModifierSettings>.Instance.SecondsToFill * Time.fixedDeltaTime);
-
-        // Collapse once per round.
-        if (Value >= Max && !_collapsed)
-        {
-            _collapsed = true;
-            AnomalyManager.Fire(AnomalyManager.Collapse, Player);
-        }
 
         // Pause the anomaly timer while entropy is negative.
         if (Value < 0f) return;

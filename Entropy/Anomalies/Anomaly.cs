@@ -10,9 +10,6 @@ public abstract class Anomaly
 
     public abstract float MinEntropy { get; }
 
-    // Unscheduled anomalies are fired explicitly, such as reality collapse.
-    public virtual bool Scheduled => true;
-
     public virtual bool CanRun(PlayerControl target) => true;
 
     public abstract IEnumerator Run(PlayerControl target, Random rng);
