@@ -11,7 +11,7 @@ using Reactor.Utilities;
 
 namespace Entropy;
 
-[BepInAutoPlugin]
+[BepInAutoPlugin("nl.yanpla.entropy", "Entropy")]
 [BepInProcess("Among Us.exe")]
 [BepInDependency(ReactorPlugin.Id)]
 [BepInDependency(MiraApiPlugin.Id)]
