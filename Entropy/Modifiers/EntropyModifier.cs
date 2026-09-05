@@ -27,7 +27,7 @@ public class EntropyModifier : GameModifier
 
     public override bool HideOnUi => true;
 
-    public override bool ShowInFreeplay => false;
+    public override bool ShowInFreeplay => true;
 
     public float Value { get; private set; }
 
