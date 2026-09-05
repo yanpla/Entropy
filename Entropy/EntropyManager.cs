@@ -5,20 +5,9 @@ using Reactor.Networking.Rpc;
 
 namespace Entropy;
 
-/// <summary>
-/// The way an action becomes entropy.
-/// </summary>
-/// <remarks>
-/// The value itself lives on the <see cref="EntropyModifier"/> of whoever the host
-/// afflicted this game. This is only the road there: a client says what it did, and the
-/// host decides whose entropy moves - which is nobody's, for anyone without one.
-/// </remarks>
+// Routes action reports to the host and updates affected modifiers.
 public static class EntropyManager
 {
-    /// <summary>
-    /// Tells the host this client just did something. Safe to call from any client;
-    /// whether it lands on the caller or on everybody is the source's business.
-    /// </summary>
     public static void Report(EntropySource source)
     {
         if (!PlayerControl.LocalPlayer) return;

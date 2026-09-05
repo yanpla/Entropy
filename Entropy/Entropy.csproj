@@ -9,7 +9,7 @@
 
         <VersionPrefix>1.0.0</VersionPrefix>
         <VersionSuffix>dev</VersionSuffix>
-        <Description>Mod generated using Reactor Template</Description>
+        <Description>Player-specific anomalies driven by entropy.</Description>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,10 +19,7 @@
 
         <PackageReference Include="AmongUs.GameLibs.Steam" Version="2026.6.5" PrivateAssets="all" />
         <PackageReference Include="Reactor" Version="2.5.1-ci.384" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\miraapi\MiraAPI\MiraAPI.csproj" />
+        <PackageReference Include="AllOfUs.MiraAPI" Version="0.4.3" />
     </ItemGroup>
 
     <Target Name="Copy" AfterTargets="Build" Condition="'$(AmongUs)' != ''">

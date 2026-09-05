@@ -4,9 +4,7 @@ using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
-/// <summary>
-/// Vents nobody used, heard by one person.
-/// </summary>
+// Plays vent sounds on the target's client.
 public class PhantomSounds : Anomaly
 {
     public override string Name => "You hear something";

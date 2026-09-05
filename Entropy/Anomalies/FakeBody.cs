@@ -1,31 +1,19 @@
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
-/// <summary>
-/// A corpse only one player can see, wearing a living player's colours.
-/// </summary>
-/// <remarks>
-/// Spawned from the real dead body prefab, so it looks right, highlights the report
-/// button and can be walked up to. It is never networked: reporting it opens no
-/// meeting, the body simply is not there any more, and the entropy of having called
-/// everyone to a corpse that does not exist goes on the meter.
-/// </remarks>
+// Spawns a local, reportable body using a living player's appearance.
 public class FakeBody : Anomaly
 {
     private const float Lifetime = 45f;
 
-    /// <summary>Far enough away to have to be noticed, close enough to be found.</summary>
     private const float MinDistance = 2.5f;
     private const float MaxDistance = 8f;
 
-    /// <summary>Bodies this client has faked, so a report can tell them from real ones.</summary>
-    internal static readonly List<DeadBody> Fakes = [];
+    private static readonly List<DeadBody> Fakes = [];
 
     public override string Name => "There is a body";
 
@@ -43,16 +31,14 @@ public class FakeBody : Anomaly
         var victim = candidates[rng.Next(candidates.Count)];
         var body = Object.Instantiate(GameManager.Instance.GetDeadBody(victim.Data.Role));
 
-        // Must stay enabled: the report button only lights up for bodies whose component
-        // is enabled. The kill animation disables one while it plays and turns it back
-        // on afterwards, and copying only the first half is what left this unreportable.
+        // The report button ignores disabled body components.
         body.enabled = true;
         body.ParentId = victim.PlayerId;
 
         for (var i = 0; i < body.bodyRenderers.Length; i++) victim.SetPlayerMaterialColors(body.bodyRenderers[i]);
         victim.SetPlayerMaterialColors(body.bloodSplatter);
 
-        // Nowhere clear in reach - underfoot is ugly, but it is definitely walkable.
+        // Fall back to the target's position if no nearby spot is available.
         var feet = target.GetTruePosition();
         var where = Placement.Find(rng, feet, MinDistance, MaxDistance) ?? feet;
         body.transform.position = new Vector3(where.x, where.y, where.y / 1000f);
@@ -61,11 +47,21 @@ public class FakeBody : Anomaly
 
         yield return new WaitForSeconds(Lifetime);
 
-        // Still standing there unreported - it gives up and was never there.
-        Forget(body);
+        Remove(body);
     }
 
-    internal static void Forget(DeadBody body)
+    internal static bool TryRemoveReported()
+    {
+        // Vanilla sets Reported before raising the report event.
+        Fakes.RemoveAll(body => !body);
+        var reported = Fakes.FirstOrDefault(body => body.Reported);
+        if (reported is null) return false;
+
+        Remove(reported);
+        return true;
+    }
+
+    private static void Remove(DeadBody body)
     {
         Fakes.Remove(body);
 

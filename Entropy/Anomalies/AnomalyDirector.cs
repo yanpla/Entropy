@@ -5,20 +5,11 @@ using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
-/// <summary>
-/// Puts an anomaly on the wire and runs it.
-/// </summary>
-/// <remarks>
-/// Deciding when is each player's own <see cref="EntropyModifier"/>; this is only the
-/// getting there. The choice is broadcast as an anomaly id, a target and a seed. Every
-/// client runs the same anomaly from the same seed, and the anomaly confines itself to
-/// its target - which is usually one person's screen and nobody else's.
-/// </remarks>
+// Broadcasts host-selected anomalies with a target and random seed.
 public static class AnomalyDirector
 {
     private static readonly Random Rng = new();
 
-    /// <summary>Host only: tells everyone an anomaly is happening to <paramref name="target"/>.</summary>
     public static void Fire(Anomaly anomaly, PlayerControl target)
     {
         if (!PlayerControl.LocalPlayer || !target) return;

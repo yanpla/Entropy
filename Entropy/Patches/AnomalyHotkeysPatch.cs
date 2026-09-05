@@ -5,20 +5,7 @@ using UnityEngine;
 
 namespace Entropy.Patches;
 
-/// <summary>
-/// Number keys fire the matching anomaly at yourself, for testing.
-/// </summary>
-/// <remarks>
-/// Anomalies are rare on purpose and most of them only happen to one person, which makes
-/// waiting for one a poor way to find out whether it works. The keys follow
-/// <see cref="AnomalyRegistry.All"/> in order, so 1 is the first entry in that list.
-/// <para>
-/// Host only, because firing one is the host's job - a client pressing a key would send
-/// an anomaly everybody else ignores. This is a debug tool and it is not hidden behind
-/// anything, so anyone hosting a real lobby with this build can set off whatever they
-/// like by leaning on the number row.
-/// </para>
-/// </remarks>
+// Host testing shortcuts: number keys 1–8 trigger anomalies in registry order.
 [HarmonyPatch(typeof(HudManager), nameof(HudManager.Update))]
 public static class AnomalyHotkeysPatch
 {

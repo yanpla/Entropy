@@ -1,18 +1,10 @@
 using System.Collections;
-using System.Linq;
 using UnityEngine;
 using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
-/// <summary>
-/// The doors nearest one player shut, on that player's screen only.
-/// </summary>
-/// <remarks>
-/// Closed locally, so the collider really does block the target while everyone else
-/// walks through an open doorway. They are reopened by us rather than by the door
-/// system, which knows nothing about any of this.
-/// </remarks>
+// Closes nearby doors locally, then reopens them after six seconds.
 public class DoorMalfunction : Anomaly
 {
     private const float Duration = 6f;

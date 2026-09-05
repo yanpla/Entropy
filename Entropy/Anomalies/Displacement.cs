@@ -3,13 +3,7 @@ using Random = System.Random;
 
 namespace Entropy.Anomalies;
 
-/// <summary>
-/// One player is somewhere else now.
-/// </summary>
-/// <remarks>
-/// The only anomaly others can actually witness, which is the point: once one real
-/// displacement has happened, every hallucination anyone reports becomes plausible.
-/// </remarks>
+// Teleports the target; the owning client networks the new position.
 public class Displacement : Anomaly
 {
     public override string Name => "You are somewhere else";
